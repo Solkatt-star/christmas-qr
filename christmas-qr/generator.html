@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圣诞二维码生成器</title>
+    <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+          font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+          background: linear-gradient(135deg, #0a1f0a 0%, #050505 50%, #1a0a0a 100%);
+          min-height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 20px;
+          color: #eee;
+        }
+
+        .container {
+          width: 100%;
+          max-width: 520px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,215,0,0.25);
+          border-radius: 20px;
+          padding: 32px 28px;
+          backdrop-filter: blur(10px);
+          box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+
+        h1 {
+          text-align: center;
+          font-size: 24px;
+          color: #FFD700;
+          margin-bottom: 6px;
+          letter-spacing: 1px;
+        }
+
+        .subtitle {
+          text-align: center;
+          font-size: 13px;
+          color: #888;
+          margin-bottom: 26px;
+        }
+
+        .field { margin-bottom: 20px; }
+
+        label {
+          display: block;
+          font-size: 14px;
+          color: #ccc;
+          margin-bottom: 8px;
+        }
+
+        input, select {
+          width: 100%;
+          padding: 12px 14px;
+          background: rgba(0,0,0,0.4);
+          border: 1px solid rgba(255,215,0,0.2);
+          border-radius: 10px;
+          color: #fff;
+          font-size: 15px;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus { border-color: #FFD700; }
+        input::placeholder { color: #666; }
+
+        /* 卡片式选择器 */
+        .card-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+        }
+
+        .card {
+          padding: 12px 6px;
+          border-radius: 10px;
+          border: 2px solid rgba(255,255,255,0.12);
+          cursor: pointer;
+          text-align: center;
+          font-size: 13px;
+          transition: all 0.2s;
+          user-select: none;
+        }
+
+        .card:hover { border-color: rgba(255,215,0,0.5); }
+
+        .card.active {
+          border-color: #FFD700;
+          background: rgba(255,215,0,0.1);
+        }
+
+        .card .icon {
+          font-size: 22px;
+          display: block;
+          margin-bottom: 4px;
+          line-height: 1.2;
+        }
+
+        .card .swatch {
+          width: 100%;
+          height: 6px;
+          border-radius: 3px;
+          margin-bottom: 8px;
+        }
+
+        .btn {
+          width: 100%;
+          padding: 14px;
+          border: none;
+          border-radius: 10px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-top: 6px;
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #006400, #228B22);
+          color: #fff;
+        }
+
+        .btn-primary:hover {
+          background: linear-gradient(135deg, #228B22, #2E8B57);
+          transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+          background: rgba(255,255,255,0.1);
+          color: #ddd;
+          border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .btn-secondary:hover { background: rgba(255,255,255,0.16); }
+
+        .result {
+          margin-top: 26px;
+          display: none;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .result.show { display: flex; }
+
+        #qrCanvas {
+          border-radius: 12px;
+          background: #fff;
+          padding: 12px;
+        }
+
+        .btn-row {
+          display: flex;
+          gap: 10px;
+          width: 100%;
+        }
+
+        .btn-row .btn { margin-top: 0; }
+
+        .hint {
+          font-size: 12px;
+          color: #777;
+          text-align: center;
+          line-height: 1.6;
+          margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎄 圣诞二维码生成器</h1>
+    <p class="subtitle">输入祝福，生成专属动态二维码</p>
+
+    <div class="field">
+        <label>祝福文字（中英文均可）</label>
+        <input id="textInput" placeholder="例：愿你被这世界温柔以待" maxlength="80">
+    </div>
+
+    <div class="field">
+        <label>收件人（可选）</label>
+        <input id="toInput" placeholder="例：给我的好朋友小明" maxlength="30">
+    </div>
+
+    <div class="field">
+        <label>动画形态</label>
+        <div class="card-grid" id="shapeGrid"></div>
+    </div>
+
+    <div class="field">
+        <label>配色方案</label>
+        <div class="card-grid" id="paletteGrid"></div>
+    </div>
+
+    <div class="field">
+        <label>二维码配色</label>
+        <select id="qrColorSelect">
+            <option value="classic">经典黑白</option>
+            <option value="green">圣诞绿金</option>
+            <option value="pink">粉色浪漫</option>
+            <option value="purple">紫夜梦幻</option>
+        </select>
+    </div>
+
+    <button class="btn btn-primary" onclick="generateQR()">生成二维码</button>
+
+    <div class="result" id="result">
+        <div id="qrCanvas"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="downloadQR()">下载二维码</button>
+            <button class="btn btn-secondary" onclick="preview()">预览效果</button>
+        </div>
+        <p class="hint">下载后可印刷或发送；扫描二维码即可看到动态页面</p>
+    </div>
+</div>
+
+<script>
+    // ============ 配置区 ============
+    // 部署后把这里改成你的展示页面地址
+    const BASE_URL = 'view.html';
+
+    // 动画形态
+    const SHAPES = [
+      { id: 'tree',     name: '圣诞树', icon: '🎄' },
+      { id: 'star',     name: '星空',   icon: '✨' },
+      { id: 'heart',    name: '爱心',   icon: '❤️' },
+      { id: 'snow',     name: '雪花',   icon: '❄️' },
+      { id: 'firework', name: '烟花',   icon: '🎆' }
+    ];
+
+    // 配色方案（对应你原来的 13 种风格）
+    const PALETTES = [
+      { id: 'classic',  name: '经典绿',   swatch: 'linear-gradient(90deg,#0f3d0f,#228B22,#FFD700)' },
+      { id: 'colorful', name: '彩色',     swatch: 'linear-gradient(90deg,#006400,#FF0000,#FFFF00)' },
+      { id: 'pink',     name: '粉色浪漫', swatch: 'linear-gradient(90deg,#D87093,#FF69B4,#FFD700)' },
+      { id: 'purple',   name: '紫夜梦幻', swatch: 'linear-gradient(90deg,#3b2c4a,#6d4c91,#FFD700)' },
+      { id: 'neon',     name: '霓虹派对', swatch: 'linear-gradient(90deg,#FF00FF,#00FFFF,#FF6B00)' },
+      { id: 'tropic',   name: '热带水果', swatch: 'linear-gradient(90deg,#00FF00,#FF4500,#FFFF00)' },
+      { id: 'candy',    name: '糖果撞色', swatch: 'linear-gradient(90deg,#FF69B4,#00FFFF,#FFD700)' },
+      { id: 'sunset',   name: '日落火焰', swatch: 'linear-gradient(90deg,#FF4500,#FF8C00,#FFFF00)' },
+      { id: 'cyber',    name: '赛博霓虹', swatch: 'linear-gradient(90deg,#00F0FF,#7928CA,#FF0080)' },
+      { id: 'morandi',  name: '莫兰迪',   swatch: 'linear-gradient(90deg,#9F86C0,#E0B1CB,#F2CD5C)' },
+      { id: 'saltlake', name: '日落盐湖', swatch: 'linear-gradient(90deg,#FFC857,#FF7A45,#00A8E8)' },
+      { id: 'caramel',  name: '焦糖奶油', swatch: 'linear-gradient(90deg,#D8A777,#F1E9D2,#8B0000)' },
+      { id: 'aurora',   name: '极光森林', swatch: 'linear-gradient(90deg,#007F73,#00A896,#70AE98)' }
+    ];
+
+    // 二维码配色方案
+    const QR_COLORS = {
+      classic: { dark: '#000000', light: '#FFFFFF' },
+      green:   { dark: '#0f3d0f', light: '#FFD700' },
+      pink:    { dark: '#C71585', light: '#FFE4E1' },
+      purple:  { dark: '#5a3f73', light: '#F3E5F5' }
+    };
+
+    // ============ 状态 ============
+    let selectedShape = 'tree';
+    let selectedPalette = 'classic';
+    let qrCodeInstance = null;
+
+    // ============ 初始化形态选择器 ============
+    function initShapeGrid() {
+      const grid = document.getElementById('shapeGrid');
+      SHAPES.forEach(s => {
+        const div = document.createElement('div');
+        div.className = 'card' + (s.id === selectedShape ? ' active' : '');
+        div.innerHTML = `<span class="icon">${s.icon}</span>${s.name}`;
+        div.onclick = () => {
+          selectedShape = s.id;
+          grid.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
+          div.classList.add('active');
+        };
+        grid.appendChild(div);
+      });
+    }
+
+    // ============ 初始化配色选择器 ============
+    function initPaletteGrid() {
+      const grid = document.getElementById('paletteGrid');
+      PALETTES.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'card' + (p.id === selectedPalette ? ' active' : '');
+        div.innerHTML = `<div class="swatch" style="background:${p.swatch}"></div>${p.name}`;
+        div.onclick = () => {
+          selectedPalette = p.id;
+          grid.querySelectorAll('.card').forEach(el => el.classList.remove('active'));
+          div.classList.add('active');
+        };
+        grid.appendChild(div);
+      });
+    }
+
+    // ============ 构建展示页面 URL ============
+    function buildURL() {
+      const text = document.getElementById('textInput').value.trim() || '圣诞快乐';
+      const to = document.getElementById('toInput').value.trim();
+      const params = new URLSearchParams();
+      params.set('text', text);
+      params.set('shape', selectedShape);
+      params.set('palette', selectedPalette);
+      if (to) params.set('to', to);
+      return `${BASE_URL}?${params.toString()}`;
+    }
+
+    // ============ 生成二维码 ============
+    function generateQR() {
+      const url = buildURL();
+      const colors = QR_COLORS[document.getElementById('qrColorSelect').value];
+
+      const container = document.getElementById('qrCanvas');
+      container.innerHTML = '';
+
+      qrCodeInstance = new QRCodeStyling({
+        width: 280,
+        height: 280,
+        data: url,
+        margin: 8,
+        dotsOptions: {
+          color: colors.dark,
+          type: 'rounded'
+        },
+        backgroundOptions: {
+          color: colors.light
+        },
+        cornersSquareOptions: {
+          color: colors.dark,
+          type: 'extra-rounded'
+        },
+        cornersDotOptions: {
+          color: colors.dark,
+          type: 'dot'
+        },
+        qrOptions: {
+          errorCorrectionLevel: 'M'
+        }
+      });
+
+      qrCodeInstance.append(container);
+      document.getElementById('result').classList.add('show');
+    }
+
+    // ============ 下载二维码 ============
+    function downloadQR() {
+      if (!qrCodeInstance) return;
+      qrCodeInstance.download({
+        name: 'christmas_qr',
+        extension: 'png'
+      });
+    }
+
+    // ============ 预览效果 ============
+    function preview() {
+      window.open(buildURL(), '_blank');
+    }
+
+    // ============ 启动 ============
+    initShapeGrid();
+    initPaletteGrid();
+</script>
+</body>
+</html>
