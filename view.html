@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>祝福</title>
+<script src="three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #050505;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  #canvas-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  .text-layer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7vh 6vw 6vh;
+  }
+
+  .blessing {
+    text-align: center;
+    max-width: 92vw;
+    line-height: 1.4;
+    font-family: 'Great Vibes', 'Dancing Script', 'STKaiti', 'KaiTi', '楷体', serif;
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+    word-break: break-word;
+  }
+
+  .recipient {
+    text-align: center;
+    max-width: 92vw;
+    font-family: 'Dancing Script', 'STKaiti', 'KaiTi', '楷体', serif;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    opacity: 0.95;
+    text-shadow: 0 0 20px currentColor;
+    word-break: break-word;
+  }
+
+  #loading {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #FFD700;
+    font-size: 18px;
+    z-index: 10;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+<div id="loading">Loading...</div>
+<div id="canvas-container"></div>
+
+<div class="text-layer">
+  <div class="blessing" id="blessing"></div>
+  <div class="recipient" id="recipient"></div>
+</div>
+
+<script>
+// ============ 读取 URL 参数 ============
+const params = new URLSearchParams(window.location.search);
+const TEXT = params.get('text') || '愿你被这世界温柔以待';
+const SHAPE = params.get('shape') || 'tree';
+const PALETTE = params.get('palette') || 'classic';
+const TO = params.get('to') || '';
+
+// ============ 配色方案 ============
+const PALETTES = {
+  classic: {
+    bg: '#050505',
+    tree: ['#0f3d0f', '#144514', '#006400', '#2E8B57', '#228B22'],
+    decor: ['#FFD700', '#FF0000', '#FFFFFF', '#FFA500'],
+    star: '#FFD700',
+    textBlessing: '#FFD700',
+    textTo: '#FFE4B5',
+    snow: '#FFFFFF'
+  },
+  colorful: {
+    bg: '#000000',
+    tree: ['#006400', '#228B22'],
+    decor: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'],
+    star: '#FFD700',
+    textBlessing: '#FF6347',
+    textTo: '#FFFF00',
+    snow: '#FFFFFF'
+  },
+  pink: {
+    bg: '#120508',
+    tree: ['#D87093', '#FF69B4', '#C71585'],
+    decor: ['#FFFFFF', '#FFD700', '#FF1493'],
+    star: '#FFD700',
+    textBlessing: '#FFB6C1',
+    textTo: '#FFE4E1',
+    snow: '#FFF0F5'
+  },
+  purple: {
+    bg: '#090512',
+    tree: ['#3b2c4a', '#5a3f73', '#6d4c91'],
+    decor: ['#E1BEE7', '#BA68C8', '#FFD700', '#FFFFFF'],
+    star: '#FFD700',
+    textBlessing: '#D1A6E0',
+    textTo: '#F3E5F5',
+    snow: '#F3E5F5'
+  },
+  neon: {
+    bg: '#0D0221',
+    tree: ['#FF00FF', '#00FFFF', '#FF6B00'],
+    decor: ['#FF0000', '#00FF00', '#FFFFFF', '#0000FF'],
+    star: '#FFFFFF',
+    textBlessing: '#00FFFF',
+    textTo: '#FF6B00',
+    snow: '#E0FFFF'
+  },
+  tropic: {
+    bg: '#050505',
+    tree: ['#00FF00', '#39FF14', '#7FFF00'],
+    decor: ['#FF4500', '#FF6347', '#FFFF00', '#FF1493'],
+    star: '#FFA500',
+    textBlessing: '#FF1493',
+    textTo: '#FFFF00',
+    snow: '#F0F8FF'
+  },
+  candy: {
+    bg: '#000000',
+    tree: ['#FF69B4', '#FFB6C1', '#C71585'],
+    decor: ['#00FFFF', '#FFD700', '#FF0000', '#00FF00'],
+    star: '#FFFF00',
+    textBlessing: '#FFB6C1',
+    textTo: '#FFD700',
+    snow: '#FFF0F5'
+  },
+  sunset: {
+    bg: '#050505',
+    tree: ['#FF4500', '#FF6347', '#FF8C00'],
+    decor: ['#FFFF00', '#FFD700', '#FFFFFF', '#FFA500'],
+    star: '#FFFFFF',
+    textBlessing: '#FFB347',
+    textTo: '#FFD700',
+    snow: '#E6E6FA'
+  },
+  cyber: {
+    bg: '#0A001F',
+    tree: ['#00F0FF', '#7928CA', '#FF0080'],
+    decor: ['#FFFF00', '#00FF9C', '#FF4080', '#00FFFF'],
+    star: '#FFFFFF',
+    textBlessing: '#00F0FF',
+    textTo: '#FF4080',
+    snow: '#00F0FF'
+  },
+  morandi: {
+    bg: '#050505',
+    tree: ['#9F86C0', '#BE95C4', '#E0B1CB'],
+    decor: ['#F2CD5C', '#F2994A', '#588B8B', '#C8C2BC'],
+    star: '#F2CD5C',
+    textBlessing: '#E0B1CB',
+    textTo: '#F2CD5C',
+    snow: '#FFFFF5'
+  },
+  saltlake: {
+    bg: '#050505',
+    tree: ['#FFC857', '#FF7A45', '#DB504A'],
+    decor: ['#00A8E8', '#DFFCDC', '#FF9F1C', '#007EA7'],
+    star: '#FDFCDC',
+    textBlessing: '#FF7A45',
+    textTo: '#FFC857',
+    snow: '#FDFCDC'
+  },
+  caramel: {
+    bg: '#050505',
+    tree: ['#D8A777', '#E8C872', '#F1E9D2'],
+    decor: ['#8B0000', '#CD853F', '#FFF8DC', '#5C4033'],
+    star: '#FFD700',
+    textBlessing: '#F1E9D2',
+    textTo: '#D8A777',
+    snow: '#F1E9D2'
+  },
+  aurora: {
+    bg: '#050505',
+    tree: ['#007F73', '#00A896', '#70AE98'],
+    decor: ['#A8E6CF', '#DCEDC1', '#FFD3B6', '#FFAAA5'],
+    star: '#FFFFFF',
+    textBlessing: '#A8E6CF',
+    textTo: '#70AE98',
+    snow: '#E0F7F4'
+  }
+};
+
+const CFG = PALETTES[PALETTE] || PALETTES.classic;
+
+// ============ 设置文字 ============
+const blessingEl = document.getElementById('blessing');
+blessingEl.textContent = TEXT;
+blessingEl.style.color = CFG.textBlessing;
+
+function adjustBlessingSize() {
+  const len = TEXT.length;
+  let size;
+  if (len <= 6)       size = 'clamp(52px, 12vw, 110px)';
+  else if (len <= 12) size = 'clamp(44px, 10vw, 88px)';
+  else if (len <= 20) size = 'clamp(36px, 8vw, 70px)';
+  else if (len <= 40) size = 'clamp(28px, 6vw, 54px)';
+  else                size = 'clamp(22px, 5vw, 42px)';
+  blessingEl.style.fontSize = size;
+}
+adjustBlessingSize();
+
+if (TO) {
+  const recipientEl = document.getElementById('recipient');
+  recipientEl.textContent = TO;
+  recipientEl.style.color = CFG.textTo;
+  recipientEl.style.fontSize = 'clamp(20px, 4vw, 34px)';
+}
+
+document.body.style.background = CFG.bg;
+
+// ============ Three.js 场景 ============
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CFG.bg);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0.6, 11);
+camera.lookAt(0, 0.6, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+// ============ 工具函数 ============
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.substring(0, 2), 16) / 255,
+    g: parseInt(h.substring(2, 4), 16) / 255,
+    b: parseInt(h.substring(4, 6), 16) / 255
+  };
+}
+
+function randomChoice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ============ 圣诞树 ============
+function generateTreeParticles() {
+  const positions = [], colors = [], sizes = [];
+  const nLayers = 4;
+  const totalLeaves = 6000;
+  const leavesPerLayer = Math.floor(totalLeaves / nLayers);
+  const layerHeights = [];
+  for (let i = 0; i <= nLayers; i++) layerHeights.push(-1.0 + (i / nLayers) * 3.0);
+
+  for (let layerIdx = 0; layerIdx < nLayers; layerIdx++) {
+    const hMin = layerHeights[layerIdx];
+    const hMax = layerHeights[layerIdx + 1];
+    const relH = layerIdx / (nLayers - 1);
+    const maxRadius = 1.5 * (1.0 - relH * 0.75);
+    for (let i = 0; i < leavesPerLayer; i++) {
+      const h = hMin + Math.random() * (hMax - hMin);
+      const relInLayer = (h - hMin) / (hMax - hMin);
+      let baseR;
+      if (layerIdx === nLayers - 1) baseR = maxRadius * (1.0 - relInLayer);
+      else {
+        const d = Math.abs(h - (hMin + hMax) / 2) / (hMax - hMin) * 2;
+        baseR = maxRadius * (1.0 - d * d * 0.3);
+      }
+      const r = baseR * Math.sqrt(Math.random() * 0.95 + 0.05);
+      const theta = Math.random() * Math.PI * 2;
+      positions.push(r * Math.cos(theta), h, r * Math.sin(theta));
+      const c = hexToRgb(randomChoice(CFG.tree));
+      colors.push(c.r, c.g, c.b);
+      sizes.push(0.03 + Math.random() * 0.04);
+    }
+  }
+
+  const totalDecor = 400;
+  for (let i = 0; i < totalDecor; i++) {
+    const layerIdx = Math.floor(Math.random() * nLayers);
+    const hMin = layerHeights[layerIdx];
+    const hMax = layerHeights[layerIdx + 1];
+    const h = hMin + Math.random() * (hMax - hMin);
+    const relH = layerIdx / (nLayers - 1);
+    const maxRadius = 1.5 * (1.0 - relH * 0.75);
+    const relInLayer = (h - hMin) / (hMax - hMin);
+    let baseR;
+    if (layerIdx === nLayers - 1) baseR = maxRadius * (1.0 - relInLayer);
+    else {
+      const d = Math.abs(h - (hMin + hMax) / 2) / (hMax - hMin) * 2;
+      baseR = maxRadius * (1.0 - d * d * 0.3);
+    }
+    const r = baseR * 0.95;
+    const theta = Math.random() * Math.PI * 2;
+    positions.push(r * Math.cos(theta), h, r * Math.sin(theta));
+    const c = hexToRgb(randomChoice(CFG.decor));
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.08 + Math.random() * 0.06);
+  }
+
+  const starH = layerHeights[nLayers] + 0.3;
+  for (let i = 0; i < 80; i++) {
+    const r = Math.random() * 0.12;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI;
+    positions.push(r * Math.sin(phi) * Math.cos(theta), starH + r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+    const c = hexToRgb(CFG.star);
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.15);
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 星空（6000 粒子紫金星河） ============
+function generateStarParticles() {
+  const positions = [], colors = [], sizes = [], flows = [];
+
+  // 紫金渐变配色（固定，不受用户配色影响）
+  const galaxyColors = [
+    { r: 0.55, g: 0.20, b: 0.75 },  // 深紫
+    { r: 0.75, g: 0.35, b: 0.90 },  // 亮紫
+    { r: 0.95, g: 0.55, b: 0.85 },  // 粉紫
+    { r: 0.95, g: 0.75, b: 0.55 },  // 金
+    { r: 1.00, g: 0.90, b: 0.70 },  // 浅金
+    { r: 0.85, g: 0.55, b: 0.95 },  // 紫粉过渡
+    { r: 0.65, g: 0.30, b: 0.85 }   // 深紫粉
+  ];
+
+  // 主银河带：6000 粒子
+  const n = 6000;
+  for (let i = 0; i < n; i++) {
+    const t = Math.random();
+    const angle = t * Math.PI * 2;
+
+    const bandWidth = Math.sin(t * Math.PI) * 0.9 + 0.3;
+    const offset = (Math.random() - 0.5) * bandWidth;
+
+    const baseR = 1.8 + Math.sin(t * Math.PI * 2) * 0.3;
+
+    const yBase = Math.sin(t * Math.PI) * 0.6 - 0.2;
+    const yJitter = (Math.random() - 0.5) * bandWidth * 0.8;
+
+    const x = baseR * Math.cos(angle) + offset * Math.cos(angle + Math.PI / 2);
+    const z = baseR * Math.sin(angle) + offset * Math.sin(angle + Math.PI / 2);
+    const y = yBase + yJitter;
+
+    positions.push(x, y, z);
+
+    const distFromCenter = Math.abs(offset) / bandWidth;
+    let colorIndex;
+    if (distFromCenter < 0.3) {
+      colorIndex = 3 + Math.floor(Math.random() * 2);
+    } else if (distFromCenter < 0.6) {
+      colorIndex = 2 + Math.floor(Math.random() * 3);
+    } else {
+      colorIndex = Math.floor(Math.random() * 3);
+    }
+    const c = galaxyColors[colorIndex];
+    colors.push(c.r, c.g, c.b);
+
+    let size;
+    if (distFromCenter < 0.3) size = 0.04 + Math.random() * 0.05;
+    else size = 0.015 + Math.random() * 0.025;
+    sizes.push(size);
+
+    flows.push(Math.random() * Math.PI * 2);
+  }
+
+  // 外围散落星点：800
+  for (let i = 0; i < 800; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = 3.5 + Math.random() * 2.5;
+    positions.push(
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi) * 0.6 - 0.3,
+      r * Math.sin(phi) * Math.sin(theta)
+    );
+    const c = galaxyColors[Math.floor(Math.random() * 3)];
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.01 + Math.random() * 0.015);
+    flows.push(Math.random() * Math.PI * 2);
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes),
+    flows: new Float32Array(flows)
+  };
+}
+
+// ============ 爱心 ============
+function generateHeartParticles() {
+  const positions = [], colors = [], sizes = [];
+  const n = 4000;
+  for (let i = 0; i < n; i++) {
+    const t = Math.random() * Math.PI * 2;
+    const scale = 0.09;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const fill = Math.pow(Math.random(), 0.5);
+    positions.push(x * scale * fill, y * scale * fill + 0.5, (Math.random() - 0.5) * 0.4);
+    const palette = Math.random() < 0.2 ? CFG.decor : CFG.tree;
+    const c = hexToRgb(randomChoice(palette));
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.03 + Math.random() * 0.05);
+  }
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 蛋糕（密集双层 + 蜡烛） ============
+function generateCakeParticles() {
+  const positions = [], colors = [], sizes = [];
+
+  const bodyColors = CFG.decor.map(hexToRgb);
+  const creamColor = hexToRgb(CFG.snow || '#FFFFFF');
+  const candleColor = hexToRgb(CFG.textBlessing);
+  const flameColor = { r: 1, g: 0.7, b: 0.2 };
+  const sparkColors = CFG.decor.concat(CFG.tree).map(hexToRgb);
+
+  // 下层蛋糕
+  for (let i = 0; i < 3200; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const r = 1.0 * Math.pow(Math.random(), 0.55);
+    const y = -0.6 + Math.random() * 0.8;
+    positions.push(r * Math.cos(theta), y, r * Math.sin(theta));
+    const c = bodyColors[Math.floor(Math.random() * bodyColors.length)];
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.025 + Math.random() * 0.025);
+  }
+
+  // 下层奶油边
+  for (let i = 0; i < 700; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const r = 0.88 + Math.random() * 0.18;
+    const y = 0.2 + (Math.random() - 0.5) * 0.1;
+    positions.push(r * Math.cos(theta), y, r * Math.sin(theta));
+    colors.push(creamColor.r, creamColor.g, creamColor.b);
+    sizes.push(0.035 + Math.random() * 0.025);
+  }
+
+  // 上层蛋糕
+  for (let i = 0; i < 1800; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const r = 0.65 * Math.pow(Math.random(), 0.55);
+    const y = 0.3 + Math.random() * 0.6;
+    positions.push(r * Math.cos(theta), y, r * Math.sin(theta));
+    const c = bodyColors[Math.floor(Math.random() * bodyColors.length)];
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.025 + Math.random() * 0.025);
+  }
+
+  // 上层奶油边
+  for (let i = 0; i < 450; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const r = 0.53 + Math.random() * 0.15;
+    const y = 0.9 + (Math.random() - 0.5) * 0.08;
+    positions.push(r * Math.cos(theta), y, r * Math.sin(theta));
+    colors.push(creamColor.r, creamColor.g, creamColor.b);
+    sizes.push(0.035 + Math.random() * 0.025);
+  }
+
+  // 蜡烛
+  const candleCount = 6;
+  for (let c = 0; c < candleCount; c++) {
+    const angle = (c / candleCount) * Math.PI * 2;
+    const cx = 0.4 * Math.cos(angle);
+    const cz = 0.4 * Math.sin(angle);
+
+    for (let i = 0; i < 40; i++) {
+      const y = 0.9 + (i / 40) * 0.35;
+      positions.push(
+        cx + (Math.random() - 0.5) * 0.04,
+        y,
+        cz + (Math.random() - 0.5) * 0.04
+      );
+      colors.push(candleColor.r, candleColor.g, candleColor.b);
+      sizes.push(0.03);
+    }
+
+    for (let i = 0; i < 30; i++) {
+      const y = 1.3 + Math.random() * 0.18;
+      const r = Math.random() * 0.035;
+      positions.push(
+        cx + r * (Math.random() - 0.5),
+        y,
+        cz + r * (Math.random() - 0.5)
+      );
+      colors.push(flameColor.r, flameColor.g, flameColor.b);
+      sizes.push(0.04 + Math.random() * 0.02);
+    }
+  }
+
+  // 蛋糕周围散落星点
+  for (let i = 0; i < 500; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const r = 1.5 + Math.random() * 1.5;
+    const y = -1.2 + Math.random() * 2.5;
+    positions.push(r * Math.cos(theta), y, r * Math.sin(theta));
+    const c = sparkColors[Math.floor(Math.random() * sparkColors.length)];
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.015 + Math.random() * 0.02);
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 根据形态创建数据 ============
+let particleData;
+let isStarFlow = false;
+
+switch (SHAPE) {
+  case 'star':
+    particleData = generateStarParticles();
+    isStarFlow = true;
+    break;
+  case 'heart':    particleData = generateHeartParticles(); break;
+  case 'firework': particleData = generateCakeParticles(); break;
+  default:         particleData = generateTreeParticles();
+}
+
+// ============ 创建粒子系统 ============
+let points = null;
+let starMaterial = null;
+
+function createPoints(data, isStar) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
+  geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
+
+  if (isStar) {
+    geometry.setAttribute('flow', new THREE.BufferAttribute(data.flows, 1));
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+        uTime: { value: 0 }
+      },
+      vertexShader: `
+        attribute float size;
+        attribute float flow;
+        varying vec3 vColor;
+        varying float vTwinkle;
+        uniform float uPixelRatio;
+        uniform float uTime;
+        void main() {
+          vColor = color;
+
+          vec3 pos = position;
+          pos.y += sin(uTime * 0.6 + flow) * 0.08;
+          pos.x += cos(uTime * 0.4 + flow) * 0.05;
+          pos.z += sin(uTime * 0.5 + flow * 1.3) * 0.05;
+
+          vTwinkle = 0.5 + 0.5 * sin(uTime * 1.5 + flow * 2.0);
+
+          vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+          gl_PointSize = size * uPixelRatio * 300.0 / -mvPosition.z;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        varying float vTwinkle;
+        void main() {
+          vec2 uv = gl_PointCoord - vec2(0.5);
+          float d = length(uv);
+          if (d > 0.5) discard;
+          float alpha = smoothstep(0.5, 0.0, d);
+          alpha *= (0.5 + vTwinkle * 0.5);
+          gl_FragColor = vec4(vColor, alpha);
+        }
+      `,
+      transparent: true,
+      vertexColors: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    starMaterial = material;
+    return new THREE.Points(geometry, material);
+  } else {
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+      },
+      vertexShader: `
+        attribute float size;
+        varying vec3 vColor;
+        uniform float uPixelRatio;
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = size * uPixelRatio * 300.0 / -mvPosition.z;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec3 vColor;
+        void main() {
+          vec2 uv = gl_PointCoord - vec2(0.5);
+          float d = length(uv);
+          if (d > 0.5) discard;
+          float alpha = smoothstep(0.5, 0.0, d);
+          gl_FragColor = vec4(vColor, alpha);
+        }
+      `,
+      transparent: true,
+      vertexColors: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+
+    return new THREE.Points(geometry, material);
+  }
+}
+
+if (particleData.positions.length > 0) {
+  points = createPoints(particleData, isStarFlow);
+  scene.add(points);
+}
+
+// ============ 背景粒子层 ============
+let bgParticlesGeo = null;
+let bgParticlesVel = [];
+let bgParticleCount = 0;
+let bgIsSnow = false;
+
+if (SHAPE === 'tree' || SHAPE === 'heart') {
+  bgIsSnow = true;
+  bgParticleCount = 200;
+  bgParticlesGeo = new THREE.BufferGeometry();
+  const pos = new Float32Array(bgParticleCount * 3);
+  for (let i = 0; i < bgParticleCount; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 10;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 10;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 6;
+    bgParticlesVel.push({
+      y: -(0.004 + Math.random() * 0.008),
+      x: (Math.random() - 0.5) * 0.002
+    });
+  }
+  bgParticlesGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const mat = new THREE.PointsMaterial({
+    color: new THREE.Color(CFG.snow),
+    size: 0.06,
+    transparent: true,
+    opacity: 0.75,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  scene.add(new THREE.Points(bgParticlesGeo, mat));
+} else if (SHAPE === 'star' || SHAPE === 'firework') {
+  bgIsSnow = false;
+  bgParticleCount = 300;
+  bgParticlesGeo = new THREE.BufferGeometry();
+  const pos = new Float32Array(bgParticleCount * 3);
+  for (let i = 0; i < bgParticleCount; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 12;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 12;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 8;
+    bgParticlesVel.push({
+      y: (Math.random() - 0.5) * 0.003,
+      x: (Math.random() - 0.5) * 0.003
+    });
+  }
+  bgParticlesGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const palette = CFG.decor.concat(CFG.tree);
+  const mat = new THREE.PointsMaterial({
+    color: new THREE.Color(palette[Math.floor(Math.random() * palette.length)]),
+    size: 0.045,
+    transparent: true,
+    opacity: 0.7,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  scene.add(new THREE.Points(bgParticlesGeo, mat));
+}
+
+// ============ 动画 ============
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  if (SHAPE === 'tree' && points) {
+    points.rotation.y = t * 0.3;
+  } else if (SHAPE === 'heart' && points) {
+    const beat = 1 + Math.sin(t * 2.5) * 0.06;
+    points.scale.set(beat, beat, beat);
+    points.rotation.y = Math.sin(t * 0.5) * 0.2;
+  } else if (SHAPE === 'star' && points) {
+    points.rotation.y = t * 0.04;
+    if (starMaterial) starMaterial.uniforms.uTime.value = t;
+  } else if (SHAPE === 'firework' && points) {
+    points.rotation.y = t * 0.15;
+  }
+
+  if (bgParticlesGeo) {
+    const arr = bgParticlesGeo.attributes.position.array;
+    for (let i = 0; i < bgParticleCount; i++) {
+      arr[i * 3 + 1] += bgParticlesVel[i].y;
+      arr[i * 3] += bgParticlesVel[i].x;
+
+      if (bgIsSnow) {
+        if (arr[i * 3 + 1] < -5) {
+          arr[i * 3 + 1] = 5;
+          arr[i * 3] = (Math.random() - 0.5) * 10;
+        }
+      } else {
+        if (arr[i * 3 + 1] > 6) arr[i * 3 + 1] = -6;
+        if (arr[i * 3 + 1] < -6) arr[i * 3 + 1] = 6;
+        if (arr[i * 3] > 6) arr[i * 3] = -6;
+        if (arr[i * 3] < -6) arr[i * 3] = 6;
+      }
+    }
+    bgParticlesGeo.attributes.position.needsUpdate = true;
+  }
+
+  camera.position.x = Math.sin(t * 0.15) * 0.25;
+  camera.position.y = 0.6 + Math.sin(t * 0.2) * 0.12;
+  camera.position.z = 11;
+  camera.lookAt(0, 0.6, 0);
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.getElementById('loading').style.display = 'none';
+animate();
+</script>
+</body>
+</html>
