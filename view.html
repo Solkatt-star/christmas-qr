@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>祝福</title>
+<script src="three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #050505;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  #canvas-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+  }
+
+  .text-layer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8vh 6vw 7vh;
+  }
+
+  .blessing {
+    text-align: center;
+    max-width: 90vw;
+    line-height: 1.4;
+    font-family: 'Great Vibes', 'Dancing Script', 'STKaiti', 'KaiTi', '楷体', serif;
+    font-weight: 400;
+    letter-spacing: 1px;
+    text-shadow: 0 0 24px currentColor, 0 0 48px currentColor;
+    word-break: break-word;
+  }
+
+  .recipient {
+    text-align: center;
+    max-width: 90vw;
+    font-family: 'Dancing Script', 'STKaiti', 'KaiTi', '楷体', serif;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    opacity: 0.9;
+    text-shadow: 0 0 14px currentColor;
+    word-break: break-word;
+  }
+
+  #loading {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #FFD700;
+    font-size: 16px;
+    z-index: 10;
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+<div id="loading">Loading...</div>
+<div id="canvas-container"></div>
+
+<div class="text-layer">
+  <div class="blessing" id="blessing"></div>
+  <div class="recipient" id="recipient"></div>
+</div>
+
+<script>
+// ============ 读取 URL 参数 ============
+const params = new URLSearchParams(window.location.search);
+const TEXT = params.get('text') || '愿你被这世界温柔以待';
+const SHAPE = params.get('shape') || 'tree';
+const PALETTE = params.get('palette') || 'classic';
+const TO = params.get('to') || '';
+
+// ============ 配色方案 ============
+const PALETTES = {
+  classic: {
+    bg: '#050505',
+    tree: ['#0f3d0f', '#144514', '#006400', '#2E8B57', '#228B22'],
+    decor: ['#FFD700', '#FF0000', '#FFFFFF', '#FFA500'],
+    star: '#FFD700',
+    textBlessing: '#FFD700',
+    textTo: '#FFE4B5',
+    snow: '#FFFFFF'
+  },
+  colorful: {
+    bg: '#000000',
+    tree: ['#006400', '#228B22'],
+    decor: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'],
+    star: '#FFD700',
+    textBlessing: '#FF6347',
+    textTo: '#FFFF00',
+    snow: '#FFFFFF'
+  },
+  pink: {
+    bg: '#120508',
+    tree: ['#D87093', '#FF69B4', '#C71585'],
+    decor: ['#FFFFFF', '#FFD700', '#FF1493'],
+    star: '#FFD700',
+    textBlessing: '#FFB6C1',
+    textTo: '#FFE4E1',
+    snow: '#FFF0F5'
+  },
+  purple: {
+    bg: '#090512',
+    tree: ['#3b2c4a', '#5a3f73', '#6d4c91'],
+    decor: ['#E1BEE7', '#BA68C8', '#FFD700', '#FFFFFF'],
+    star: '#FFD700',
+    textBlessing: '#D1A6E0',
+    textTo: '#F3E5F5',
+    snow: '#F3E5F5'
+  },
+  neon: {
+    bg: '#0D0221',
+    tree: ['#FF00FF', '#00FFFF', '#FF6B00'],
+    decor: ['#FF0000', '#00FF00', '#FFFFFF', '#0000FF'],
+    star: '#FFFFFF',
+    textBlessing: '#00FFFF',
+    textTo: '#FF6B00',
+    snow: '#E0FFFF'
+  },
+  tropic: {
+    bg: '#050505',
+    tree: ['#00FF00', '#39FF14', '#7FFF00'],
+    decor: ['#FF4500', '#FF6347', '#FFFF00', '#FF1493'],
+    star: '#FFA500',
+    textBlessing: '#FF1493',
+    textTo: '#FFFF00',
+    snow: '#F0F8FF'
+  },
+  candy: {
+    bg: '#000000',
+    tree: ['#FF69B4', '#FFB6C1', '#C71585'],
+    decor: ['#00FFFF', '#FFD700', '#FF0000', '#00FF00'],
+    star: '#FFFF00',
+    textBlessing: '#FFB6C1',
+    textTo: '#FFD700',
+    snow: '#FFF0F5'
+  },
+  sunset: {
+    bg: '#050505',
+    tree: ['#FF4500', '#FF6347', '#FF8C00'],
+    decor: ['#FFFF00', '#FFD700', '#FFFFFF', '#FFA500'],
+    star: '#FFFFFF',
+    textBlessing: '#FFB347',
+    textTo: '#FFD700',
+    snow: '#E6E6FA'
+  },
+  cyber: {
+    bg: '#0A001F',
+    tree: ['#00F0FF', '#7928CA', '#FF0080'],
+    decor: ['#FFFF00', '#00FF9C', '#FF4080', '#00FFFF'],
+    star: '#FFFFFF',
+    textBlessing: '#00F0FF',
+    textTo: '#FF4080',
+    snow: '#00F0FF'
+  },
+  morandi: {
+    bg: '#050505',
+    tree: ['#9F86C0', '#BE95C4', '#E0B1CB'],
+    decor: ['#F2CD5C', '#F2994A', '#588B8B', '#C8C2BC'],
+    star: '#F2CD5C',
+    textBlessing: '#E0B1CB',
+    textTo: '#F2CD5C',
+    snow: '#FFFFF5'
+  },
+  saltlake: {
+    bg: '#050505',
+    tree: ['#FFC857', '#FF7A45', '#DB504A'],
+    decor: ['#00A8E8', '#DFFCDC', '#FF9F1C', '#007EA7'],
+    star: '#FDFCDC',
+    textBlessing: '#FF7A45',
+    textTo: '#FFC857',
+    snow: '#FDFCDC'
+  },
+  caramel: {
+    bg: '#050505',
+    tree: ['#D8A777', '#E8C872', '#F1E9D2'],
+    decor: ['#8B0000', '#CD853F', '#FFF8DC', '#5C4033'],
+    star: '#FFD700',
+    textBlessing: '#F1E9D2',
+    textTo: '#D8A777',
+    snow: '#F1E9D2'
+  },
+  aurora: {
+    bg: '#050505',
+    tree: ['#007F73', '#00A896', '#70AE98'],
+    decor: ['#A8E6CF', '#DCEDC1', '#FFD3B6', '#FFAAA5'],
+    star: '#FFFFFF',
+    textBlessing: '#A8E6CF',
+    textTo: '#70AE98',
+    snow: '#E0F7F4'
+  }
+};
+
+const CFG = PALETTES[PALETTE] || PALETTES.classic;
+
+// ============ 设置文字 ============
+const blessingEl = document.getElementById('blessing');
+blessingEl.textContent = TEXT;
+blessingEl.style.color = CFG.textBlessing;
+
+function adjustBlessingSize() {
+  const len = TEXT.length;
+  let size;
+  if (len <= 6)       size = 'clamp(44px, 10vw, 90px)';
+  else if (len <= 12) size = 'clamp(36px, 8vw, 72px)';
+  else if (len <= 20) size = 'clamp(30px, 6vw, 56px)';
+  else if (len <= 40) size = 'clamp(22px, 5vw, 44px)';
+  else                size = 'clamp(18px, 4vw, 34px)';
+  blessingEl.style.fontSize = size;
+}
+adjustBlessingSize();
+
+if (TO) {
+  const recipientEl = document.getElementById('recipient');
+  recipientEl.textContent = TO;
+  recipientEl.style.color = CFG.textTo;
+  recipientEl.style.fontSize = 'clamp(16px, 3vw, 28px)';
+}
+
+document.body.style.background = CFG.bg;
+
+// ============ Three.js 场景 ============
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CFG.bg);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0.6, 8);
+camera.lookAt(0, 0.6, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+// ============ 工具函数 ============
+function hexToRgb(hex) {
+  const h = hex.replace('#', '');
+  return {
+    r: parseInt(h.substring(0, 2), 16) / 255,
+    g: parseInt(h.substring(2, 4), 16) / 255,
+    b: parseInt(h.substring(4, 6), 16) / 255
+  };
+}
+
+function randomChoice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ============ 圣诞树 ============
+function generateTreeParticles() {
+  const positions = [], colors = [], sizes = [];
+  const nLayers = 4;
+  const totalLeaves = 6000;
+  const leavesPerLayer = Math.floor(totalLeaves / nLayers);
+  const layerHeights = [];
+  for (let i = 0; i <= nLayers; i++) layerHeights.push(-1.0 + (i / nLayers) * 3.0);
+
+  for (let layerIdx = 0; layerIdx < nLayers; layerIdx++) {
+    const hMin = layerHeights[layerIdx];
+    const hMax = layerHeights[layerIdx + 1];
+    const relH = layerIdx / (nLayers - 1);
+    const maxRadius = 1.5 * (1.0 - relH * 0.75);
+    for (let i = 0; i < leavesPerLayer; i++) {
+      const h = hMin + Math.random() * (hMax - hMin);
+      const relInLayer = (h - hMin) / (hMax - hMin);
+      let baseR;
+      if (layerIdx === nLayers - 1) baseR = maxRadius * (1.0 - relInLayer);
+      else {
+        const d = Math.abs(h - (hMin + hMax) / 2) / (hMax - hMin) * 2;
+        baseR = maxRadius * (1.0 - d * d * 0.3);
+      }
+      const r = baseR * Math.sqrt(Math.random() * 0.95 + 0.05);
+      const theta = Math.random() * Math.PI * 2;
+      positions.push(r * Math.cos(theta), h, r * Math.sin(theta));
+      const c = hexToRgb(randomChoice(CFG.tree));
+      colors.push(c.r, c.g, c.b);
+      sizes.push(0.03 + Math.random() * 0.04);
+    }
+  }
+
+  const totalDecor = 400;
+  for (let i = 0; i < totalDecor; i++) {
+    const layerIdx = Math.floor(Math.random() * nLayers);
+    const hMin = layerHeights[layerIdx];
+    const hMax = layerHeights[layerIdx + 1];
+    const h = hMin + Math.random() * (hMax - hMin);
+    const relH = layerIdx / (nLayers - 1);
+    const maxRadius = 1.5 * (1.0 - relH * 0.75);
+    const relInLayer = (h - hMin) / (hMax - hMin);
+    let baseR;
+    if (layerIdx === nLayers - 1) baseR = maxRadius * (1.0 - relInLayer);
+    else {
+      const d = Math.abs(h - (hMin + hMax) / 2) / (hMax - hMin) * 2;
+      baseR = maxRadius * (1.0 - d * d * 0.3);
+    }
+    const r = baseR * 0.95;
+    const theta = Math.random() * Math.PI * 2;
+    positions.push(r * Math.cos(theta), h, r * Math.sin(theta));
+    const c = hexToRgb(randomChoice(CFG.decor));
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.08 + Math.random() * 0.06);
+  }
+
+  const starH = layerHeights[nLayers] + 0.3;
+  for (let i = 0; i < 80; i++) {
+    const r = Math.random() * 0.12;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI;
+    positions.push(r * Math.sin(phi) * Math.cos(theta), starH + r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+    const c = hexToRgb(CFG.star);
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.15);
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 星空（星星 + 月亮） ============
+function generateStarParticles() {
+  const positions = [], colors = [], sizes = [];
+
+  // 星星：分布更自然，大小差异更大
+  const n = 1500;
+  for (let i = 0; i < n; i++) {
+    const r = 2.0 + 3.5 * Math.cbrt(Math.random());
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+
+    const x = r * Math.sin(phi) * Math.cos(theta);
+    const y = r * Math.cos(phi) * 0.7 + 0.3;
+    const z = r * Math.sin(phi) * Math.sin(theta);
+
+    positions.push(x, y, z);
+
+    const palette = Math.random() < 0.4 ? CFG.decor : CFG.tree;
+    const c = hexToRgb(randomChoice(palette));
+    colors.push(c.r, c.g, c.b);
+
+    const sizeRoll = Math.random();
+    if (sizeRoll < 0.85) {
+      sizes.push(0.015 + Math.random() * 0.03);
+    } else {
+      sizes.push(0.06 + Math.random() * 0.06);
+    }
+  }
+
+  // 月亮：缩小，位置更靠边
+  const moonX = 1.6, moonY = 1.1, moonZ = -0.8;
+  const moonR = 0.22;
+  const moonColor = hexToRgb(CFG.star);
+
+  for (let i = 0; i < 120; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = moonR * Math.cbrt(Math.random());
+    positions.push(
+      moonX + r * Math.sin(phi) * Math.cos(theta),
+      moonY + r * Math.cos(phi),
+      moonZ + r * Math.sin(phi) * Math.sin(theta)
+    );
+    colors.push(moonColor.r, moonColor.g, moonColor.b);
+    sizes.push(0.04 + Math.random() * 0.02);
+  }
+
+  // 月亮光晕
+  for (let i = 0; i < 60; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = moonR * (1.0 + Math.random() * 0.7);
+    positions.push(
+      moonX + r * Math.sin(phi) * Math.cos(theta),
+      moonY + r * Math.cos(phi),
+      moonZ + r * Math.sin(phi) * Math.sin(theta)
+    );
+    colors.push(moonColor.r, moonColor.g, moonColor.b);
+    sizes.push(0.06 + Math.random() * 0.05);
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 爱心 ============
+function generateHeartParticles() {
+  const positions = [], colors = [], sizes = [];
+  const n = 4000;
+  for (let i = 0; i < n; i++) {
+    const t = Math.random() * Math.PI * 2;
+    const scale = 0.09;
+    const x = 16 * Math.pow(Math.sin(t), 3);
+    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+    const fill = Math.pow(Math.random(), 0.5);
+    positions.push(x * scale * fill, y * scale * fill + 0.5, (Math.random() - 0.5) * 0.4);
+    const palette = Math.random() < 0.2 ? CFG.decor : CFG.tree;
+    const c = hexToRgb(randomChoice(palette));
+    colors.push(c.r, c.g, c.b);
+    sizes.push(0.03 + Math.random() * 0.05);
+  }
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 雪花（松树 + 飘落雪花） ============
+function generateSnowParticles() {
+  const positions = [], colors = [], sizes = [];
+
+  const n = 3000;
+  const treeTopY = 1.4;
+  const treeBaseY = -1.1;
+  const maxRadius = 1.1;
+  const nLayers = 4;
+
+  for (let layerIdx = 0; layerIdx < nLayers; layerIdx++) {
+    const hMin = treeBaseY + (layerIdx / nLayers) * (treeTopY - treeBaseY);
+    const hMax = treeBaseY + ((layerIdx + 1) / nLayers) * (treeTopY - treeBaseY);
+    const relH = layerIdx / (nLayers - 1);
+    const layerRadius = maxRadius * (1.0 - relH * 0.75);
+    const ptsPerLayer = Math.floor(n / nLayers);
+
+    for (let i = 0; i < ptsPerLayer; i++) {
+      const h = hMin + Math.random() * (hMax - hMin);
+      const relInLayer = (h - hMin) / (hMax - hMin);
+      const baseR = layerRadius * (1.0 - relInLayer * 0.7);
+      const r = baseR * Math.sqrt(Math.random());
+      const theta = Math.random() * Math.PI * 2;
+
+      positions.push(r * Math.cos(theta), h, r * Math.sin(theta));
+
+      const useTreeColor = Math.random() < 0.25;
+      const c = useTreeColor ? hexToRgb(randomChoice(CFG.tree)) : hexToRgb(CFG.snow);
+      colors.push(c.r, c.g, c.b);
+      sizes.push(0.03 + Math.random() * 0.03);
+    }
+  }
+
+  // 树干
+  for (let i = 0; i < 60; i++) {
+    const r = Math.random() * 0.1;
+    const theta = Math.random() * Math.PI * 2;
+    const h = treeBaseY - 0.25 + Math.random() * 0.25;
+    positions.push(r * Math.cos(theta), h, r * Math.sin(theta));
+    colors.push(0.35, 0.22, 0.12);
+    sizes.push(0.04);
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    colors: new Float32Array(colors),
+    sizes: new Float32Array(sizes)
+  };
+}
+
+// ============ 烟花动态系统 ============
+let fireworkSystem = null;
+
+function initFireworkSystem() {
+  const MAX_FIREWORKS = 3;
+  const PARTICLES_PER_FW = 120;
+  const TOTAL = MAX_FIREWORKS * PARTICLES_PER_FW;
+
+  const positions = new Float32Array(TOTAL * 3);
+  const colors = new Float32Array(TOTAL * 3);
+  const sizes = new Float32Array(TOTAL);
+
+  for (let i = 0; i < TOTAL; i++) {
+    positions[i * 3 + 1] = -999;
+    sizes[i] = 0;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) } },
+    vertexShader: `
+      attribute float size;
+      varying vec3 vColor;
+      uniform float uPixelRatio;
+      void main() {
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = size * uPixelRatio * 300.0 / -mvPosition.z;
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      void main() {
+        vec2 uv = gl_PointCoord - vec2(0.5);
+        float d = length(uv);
+        if (d > 0.5) discard;
+        float alpha = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(vColor, alpha);
+      }
+    `,
+    transparent: true,
+    vertexColors: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+
+  fireworkSystem = {
+    MAX_FIREWORKS,
+    PARTICLES_PER_FW,
+    TOTAL,
+    positions, colors, sizes,
+    geo, points,
+    list: [],
+    lastLaunch: 0,
+    interval: 1.2
+  };
+}
+
+function launchFirework(t) {
+  const cx = (Math.random() - 0.5) * 2.4;
+  const cz = (Math.random() - 0.5) * 1.6;
+  const startY = -1.6;
+  const targetY = 0.4 + Math.random() * 0.9;
+  const mainColor = hexToRgb(randomChoice(CFG.decor));
+
+  const particles = [];
+  for (let i = 0; i < fireworkSystem.PARTICLES_PER_FW; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const speed = 0.5 + Math.random() * 0.9;
+    const color = Math.random() < 0.7 ? mainColor : hexToRgb(randomChoice(CFG.decor));
+    particles.push({
+      dx: speed * Math.sin(phi) * Math.cos(theta),
+      dy: speed * Math.cos(phi),
+      dz: speed * Math.sin(phi) * Math.sin(theta),
+      color
+    });
+  }
+
+  fireworkSystem.list.push({
+    startTime: t,
+    cx, cz, startY, targetY,
+    particles
+  });
+}
+
+function updateFireworks(t) {
+  const sys = fireworkSystem;
+  if (!sys) return;
+
+  if (t - sys.lastLaunch > sys.interval && sys.list.length < sys.MAX_FIREWORKS) {
+    launchFirework(t);
+    sys.lastLaunch = t;
+  }
+
+  for (let i = 0; i < sys.TOTAL; i++) {
+    sys.positions[i * 3 + 1] = -999;
+    sys.sizes[i] = 0;
+  }
+
+  for (let f = 0; f < sys.list.length; f++) {
+    const fw = sys.list[f];
+    const elapsed = t - fw.startTime;
+    const launchDur = 0.8;
+    const burstDur = 2.5;
+    const baseIdx = f * sys.PARTICLES_PER_FW;
+
+    if (elapsed < launchDur) {
+      const progress = elapsed / launchDur;
+      const y = fw.startY + (fw.targetY - fw.startY) * progress;
+      for (let i = 0; i < sys.PARTICLES_PER_FW; i++) {
+        const idx = (baseIdx + i) * 3;
+        const tailOffset = i < 8 ? i * 0.06 : 0;
+        sys.positions[idx] = fw.cx + (Math.random() - 0.5) * 0.03;
+        sys.positions[idx + 1] = y - tailOffset;
+        sys.positions[idx + 2] = fw.cz + (Math.random() - 0.5) * 0.03;
+        sys.colors[idx] = 1;
+        sys.colors[idx + 1] = 0.95;
+        sys.colors[idx + 2] = 0.7;
+        sys.sizes[baseIdx + i] = i < 8 ? 0.12 - i * 0.01 : 0.015;
+      }
+    } else if (elapsed < launchDur + burstDur) {
+      const p = (elapsed - launchDur) / burstDur;
+      const easeP = 1 - Math.pow(1 - p, 2);
+      const fade = Math.max(0, 1 - p * 1.2);
+      const gravity = p * p * 0.9;
+
+      for (let i = 0; i < sys.PARTICLES_PER_FW; i++) {
+        const pt = fw.particles[i];
+        const idx = (baseIdx + i) * 3;
+        sys.positions[idx] = fw.cx + pt.dx * easeP;
+        sys.positions[idx + 1] = fw.targetY + pt.dy * easeP - gravity;
+        sys.positions[idx + 2] = fw.cz + pt.dz * easeP;
+        sys.colors[idx] = pt.color.r;
+        sys.colors[idx + 1] = pt.color.g;
+        sys.colors[idx + 2] = pt.color.b;
+        sys.sizes[baseIdx + i] = (0.05 + Math.random() * 0.04) * fade;
+      }
+    } else {
+      sys.list.splice(f, 1);
+      f--;
+    }
+  }
+
+  sys.geo.attributes.position.needsUpdate = true;
+  sys.geo.attributes.color.needsUpdate = true;
+  sys.geo.attributes.size.needsUpdate = true;
+}
+
+// ============ 根据形态创建数据 ============
+let particleData;
+let useFireworkSystem = false;
+
+switch (SHAPE) {
+  case 'star':     particleData = generateStarParticles(); break;
+  case 'heart':    particleData = generateHeartParticles(); break;
+  case 'snow':     particleData = generateSnowParticles(); break;
+  case 'firework':
+    useFireworkSystem = true;
+    particleData = {
+      positions: new Float32Array(0),
+      colors: new Float32Array(0),
+      sizes: new Float32Array(0)
+    };
+    break;
+  default:         particleData = generateTreeParticles();
+}
+
+// ============ 创建粒子系统 ============
+let points = null;
+
+function createPoints(data) {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
+  geometry.setAttribute('size', new THREE.BufferAttribute(data.sizes, 1));
+
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) }
+    },
+    vertexShader: `
+      attribute float size;
+      varying vec3 vColor;
+      uniform float uPixelRatio;
+      void main() {
+        vColor = color;
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = size * uPixelRatio * 300.0 / -mvPosition.z;
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      void main() {
+        vec2 uv = gl_PointCoord - vec2(0.5);
+        float d = length(uv);
+        if (d > 0.5) discard;
+        float alpha = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(vColor, alpha);
+      }
+    `,
+    transparent: true,
+    vertexColors: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+
+  return new THREE.Points(geometry, material);
+}
+
+if (particleData.positions.length > 0) {
+  points = createPoints(particleData);
+  scene.add(points);
+}
+
+if (useFireworkSystem) {
+  initFireworkSystem();
+}
+
+// ============ 雪花层（仅圣诞树 / 雪花形态启用） ============
+let snowGeo = null, snowVel = [], snowCount = 0;
+if (SHAPE === 'tree' || SHAPE === 'snow') {
+  snowCount = 200;
+  snowGeo = new THREE.BufferGeometry();
+  const snowPos = new Float32Array(snowCount * 3);
+  for (let i = 0; i < snowCount; i++) {
+    snowPos[i * 3] = (Math.random() - 0.5) * 8;
+    snowPos[i * 3 + 1] = (Math.random() - 0.5) * 8;
+    snowPos[i * 3 + 2] = (Math.random() - 0.5) * 6;
+    snowVel.push({
+      y: -(0.004 + Math.random() * 0.008),
+      x: (Math.random() - 0.5) * 0.002
+    });
+  }
+  snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+
+  const snowMat = new THREE.PointsMaterial({
+    color: new THREE.Color(CFG.snow),
+    size: 0.05,
+    transparent: true,
+    opacity: 0.7,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const snowPoints = new THREE.Points(snowGeo, snowMat);
+  scene.add(snowPoints);
+}
+
+// ============ 动画 ============
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  if (SHAPE === 'tree' && points) {
+    points.rotation.y = t * 0.3;
+  } else if (SHAPE === 'snow' && points) {
+    points.rotation.y = t * 0.15;
+  } else if (SHAPE === 'heart' && points) {
+    const beat = 1 + Math.sin(t * 2.5) * 0.06;
+    points.scale.set(beat, beat, beat);
+    points.rotation.y = Math.sin(t * 0.5) * 0.2;
+  } else if (SHAPE === 'star' && points) {
+    points.rotation.y = t * 0.03;
+    points.rotation.x = Math.sin(t * 0.15) * 0.06;
+  } else if (SHAPE === 'firework') {
+    updateFireworks(t);
+  }
+
+  if (snowGeo) {
+    const snowArr = snowGeo.attributes.position.array;
+    for (let i = 0; i < snowCount; i++) {
+      snowArr[i * 3 + 1] += snowVel[i].y;
+      snowArr[i * 3] += snowVel[i].x;
+      if (snowArr[i * 3 + 1] < -4) {
+        snowArr[i * 3 + 1] = 4;
+        snowArr[i * 3] = (Math.random() - 0.5) * 8;
+      }
+    }
+    snowGeo.attributes.position.needsUpdate = true;
+  }
+
+  camera.position.x = Math.sin(t * 0.15) * 0.25;
+  camera.position.y = 0.6 + Math.sin(t * 0.2) * 0.12;
+  camera.position.z = 8;
+  camera.lookAt(0, 0.6, 0);
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.getElementById('loading').style.display = 'none';
+animate();
+</script>
+</body>
+</html>
